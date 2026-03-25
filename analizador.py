@@ -1,17 +1,13 @@
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 def iniciar_sistema():
-    # 1. Cargar las variables secretas del archivo .env a la memoria
     load_dotenv()
-    
-    # 2. Leer las variables específicas
-    api_key = os.getenv("NAUTA_API_KEY")
-    entorno = os.getenv("MODO_ENTORNO", "desconocido") # "desconocido" es un valor por defecto por si falla
+    entorno = os.getenv("MODO_ENTORNO", "desconocido")
     
     print(f"=== Analizador de Inventario Naval - Nauta Systems ===")
-    # NUNCA imprimimos la clave completa en consola, solo una parte para debug
-    print(f"[{entorno.upper()}] Conectando a servidor con API Key: {api_key[:5]}***\n")
+    print(f"[{entorno.upper()}] Conectando a servidor de base de datos...\n")
     
     inventario = [
         {"pieza": "Motor Fuera de Borda", "stock": 12, "estado": "optimo"},
@@ -20,15 +16,28 @@ def iniciar_sistema():
         {"pieza": "Panel de Control", "stock": 1, "estado": "critico"}
     ]
     
-    analizar_stock_critico(inventario)
+    generar_reporte_archivo(inventario)
 
-def analizar_stock_critico(datos):
-    """Filtra y muestra únicamente las piezas con stock menor a 5"""
-    print("--- REPORTE DE STOCK CRÍTICO ---")
-    for item in datos:
-        if item["stock"] < 5:
-            print(f"[ALERTA] {item['pieza']} - Solo quedan {item['stock']} unidades.")
-    print("--------------------------------\n")
+def generar_reporte_archivo(datos):
+    """Genera un archivo .txt con el reporte de stock crítico"""
+    # Obtenemos la fecha y hora exacta para que los reportes no se sobreescriban
+    fecha_actual = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    nombre_archivo = f"reporte_nauta_{fecha_actual}.txt"
+    
+    # Manejo profesional de archivos en Python usando 'with'
+    with open(nombre_archivo, "w", encoding="utf-8") as archivo:
+        archivo.write("--- REPORTE DE STOCK CRÍTICO ---\n")
+        piezas_criticas = 0
+        
+        for item in datos:
+            if item["stock"] < 5:
+                archivo.write(f"[ALERTA] {item['pieza']} - Quedan {item['stock']} unidades.\n")
+                piezas_criticas += 1
+                
+        archivo.write("--------------------------------\n")
+        archivo.write(f"Total de piezas críticas detectadas: {piezas_criticas}\n")
+    
+    print(f"[EXITO] Reporte generado automáticamente: {nombre_archivo}")
 
 if __name__ == "__main__":
     iniciar_sistema()

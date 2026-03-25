@@ -7,3 +7,6 @@ __pycache__/
 
 # Entornos virtuales
 venv/
+
+# Reportes generados por el sistema
+reporte_*.txt
