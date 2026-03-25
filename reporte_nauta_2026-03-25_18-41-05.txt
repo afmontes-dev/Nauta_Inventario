@@ -1,5 +1,0 @@
---- REPORTE DE STOCK CRÍTICO ---
-[ALERTA] Válvula de Presión - Quedan 3 unidades.
-[ALERTA] Panel de Control - Quedan 1 unidades.
---------------------------------
-Total de piezas críticas detectadas: 2
