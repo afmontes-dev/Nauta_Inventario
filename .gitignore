@@ -4,3 +4,6 @@
 # Archivos basura de Python
 __pycache__/
 *.pyc
+
+# Entornos virtuales
+venv/
