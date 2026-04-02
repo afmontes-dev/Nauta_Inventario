@@ -10,13 +10,14 @@ def iniciar_sistema():
     print(f"[{entorno.upper()}] Conectando a servidor de base de datos...\n")
     
     inventario = [
-        {"pieza": "Motor Fuera de Borda", "stock": 12, "estado": "optimo"},
-        {"pieza": "Válvula de Presión", "stock": 3, "estado": "critico"},
-        {"pieza": "Filtro de Aceite", "stock": 45, "estado": "optimo"},
-        {"pieza": "Panel de Control", "stock": 1, "estado": "critico"}
+        {"pieza": "Motor Fuera de Borda", "stock": 12, "estado": "optimo", "precio": 4500.50},
+        {"pieza": "Válvula de Presión", "stock": 3, "estado": "critico", "precio": 150.00},
+        {"pieza": "Filtro de Aceite", "stock": 45, "estado": "optimo", "precio": 25.50},
+        {"pieza": "Panel de Control", "stock": 1, "estado": "critico", "precio": 1200.00}
     ]
     
     generar_reporte_archivo(inventario)
+    calcular_valor_total(inventario)
 
 def generar_reporte_archivo(datos):
     """Genera un archivo .txt con el reporte de stock crítico"""
@@ -39,5 +40,17 @@ def generar_reporte_archivo(datos):
     
     print(f"[EXITO] Reporte generado automáticamente: {nombre_archivo}")
 
+def calcular_valor_total(datos):
+    """Calcula el valor total en dólares de todo el inventario"""
+    valor_total = 0.0  # Empezamos con la alcancía en cero
+    
+    for item in datos:
+        # Por cada pieza, calculamos su valor y lo sumamos a la alcancía
+        subtotal = item["stock"] * item["precio"]
+        valor_total += subtotal
+        
+    # Imprimimos el resultado con formato de moneda
+    print(f"\n[FINANZAS] El valor total del inventario es: ${valor_total:,.2f}")
+    
 if __name__ == "__main__":
     iniciar_sistema()
