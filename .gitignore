@@ -10,3 +10,6 @@ venv/
 
 # Reportes generados por el sistema
 reporte_*.txt
+
+# Reportes financieros
+finanzas_*.csv

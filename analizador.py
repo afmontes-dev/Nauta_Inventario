@@ -1,5 +1,6 @@
 import os
 import json
+import csv
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -24,6 +25,7 @@ def iniciar_sistema():
     
     generar_reporte_archivo(inventario)
     calcular_valor_total(inventario)
+    exportar_finanzas_csv(inventario)
 
 def generar_reporte_archivo(datos):
     """Genera un archivo .txt con el reporte de stock crítico"""
@@ -57,6 +59,38 @@ def calcular_valor_total(datos):
         
     # Imprimimos el resultado con formato de moneda
     print(f"\n[FINANZAS] El valor total del inventario es: ${valor_total:,.2f}")
+
+def exportar_finanzas_csv(datos):
+    """Exporta el inventario a un formato amigable para Excel"""
+    fecha_actual = datetime.now().strftime("%Y-%m-%d")
+    nombre_csv = f"finanzas_nauta_{fecha_actual}.csv"
     
+    # Abrimos el archivo en modo escritura. 'newline=""' evita saltos de línea extra en Windows
+    with open(nombre_csv, mode="w", newline="", encoding="utf-8") as archivo_csv:
+        # Definimos cuáles serán los títulos de nuestras columnas
+        columnas = ["pieza", "stock", "estado", "precio", "subtotal_usd"]
+        
+        # DictWriter es un traductor. Le damos las columnas y él acomoda los diccionarios
+        escritor = csv.DictWriter(archivo_csv, fieldnames=columnas)
+        
+        # Escribimos la primera fila (los títulos)
+        escritor.writeheader()
+        
+        # Recorremos el inventario y escribimos fila por fila
+        for item in datos:
+            # Calculamos el subtotal en tiempo real para agregarlo al reporte
+            subtotal = item["stock"] * item["precio"]
+            
+            # Escribimos la fila asegurándonos de que coincida con las columnas
+            escritor.writerow({
+                "pieza": item["pieza"],
+                "stock": item["stock"],
+                "estado": item["estado"],
+                "precio": item["precio"],
+                "subtotal_usd": subtotal
+            })
+            
+    print(f"[EXITO] Reporte financiero exportado para Excel: {nombre_csv}")
+
 if __name__ == "__main__":
     iniciar_sistema()
