@@ -1,4 +1,5 @@
 import os
+import json
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -9,12 +10,17 @@ def iniciar_sistema():
     print(f"=== Analizador de Inventario Naval - Nauta Systems ===")
     print(f"[{entorno.upper()}] Conectando a servidor de base de datos...\n")
     
-    inventario = [
-        {"pieza": "Motor Fuera de Borda", "stock": 12, "estado": "optimo", "precio": 4500.50},
-        {"pieza": "Válvula de Presión", "stock": 3, "estado": "critico", "precio": 150.00},
-        {"pieza": "Filtro de Aceite", "stock": 45, "estado": "optimo", "precio": 25.50},
-        {"pieza": "Panel de Control", "stock": 1, "estado": "critico", "precio": 1200.00}
-    ]
+    # NUEVA LÓGICA: Leer datos desde el archivo externo
+    try:
+        # Abrimos el archivo en modo lectura ("r" de read)
+        with open("base_datos.json", "r", encoding="utf-8") as archivo_json:
+            # json.load() traduce el texto del archivo a una lista de diccionarios de Python
+            inventario = json.load(archivo_json)
+            print(f"[SISTEMA] Base de datos externa cargada. Total de piezas únicas: {len(inventario)}\n")
+            
+    except FileNotFoundError:
+        print("[ERROR] Base de datos no encontrada. Deteniendo sistema de seguridad.")
+        return # Si no hay datos, abortamos la ejecución
     
     generar_reporte_archivo(inventario)
     calcular_valor_total(inventario)
