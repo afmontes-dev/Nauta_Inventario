@@ -1,17 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 from datos import cargar_inventario, guardar_inventario
-from reportes import calcular_finanzas
+from reportes import calcular_finanzas, calcular_estado
 
-# 1. Instanciamos la aplicación
-app = FastAPI(title="Nauta Systems API")
+# 1. Instanciamos la aplicación con metadatos profesionales
+app = FastAPI(title="Nauta Systems API v1.1")
 
-# 2. Definimos las reglas para piezas nuevas (sin pedir el "estado")
+# 2. Esquemas de validación (Pydantic)
 class PiezaNueva(BaseModel):
     pieza: str
     stock: int
     precio: float
-# Reglas para cuando alguien quiere actualizar (solo le pedimos stock y precio)
+
 class PiezaActualizar(BaseModel):
     stock: int
     precio: float
@@ -22,66 +22,68 @@ class PiezaActualizar(BaseModel):
 
 @app.get("/")
 def ruta_principal():
-    return {
-        "sistema": "Nauta Systems",
-        "estado": "En línea",
-        "mensaje": "Bienvenido al servidor de inventario naval"
-    }
+    return {"sistema": "Nauta Systems", "estado": "Operativo"}
 
 @app.get("/inventario")
 def obtener_inventario():
     datos = cargar_inventario()
     if datos is None:
-        return {"error": "No se pudo cargar la base de datos"}
-    return {"total_piezas": len(datos), "inventario": datos}
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error crítico: No se pudo cargar el archivo de inventario."
+        )
+    return {"total": len(datos), "items": datos}
 
 @app.get("/finanzas")
 def obtener_finanzas():
     datos = cargar_inventario()
     if datos is None:
-        return {"error": "No se pudo cargar la base de datos"}
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al acceder a los datos financieros."
+        )
     
     valor_total = calcular_finanzas(datos)
-    return {
-        "estado": "Calculado", 
-        "valor_total_usd": valor_total, 
-        "moneda": "USD"
-    }
+    return {"estado": "Calculado", "valor_total_usd": valor_total}
 
 @app.get("/inventario/{nombre_pieza}")
 def buscar_pieza(nombre_pieza: str):
     datos = cargar_inventario()
     if datos is None:
-        return {"error": "Base de datos no disponible"}
+        raise HTTPException(status_code=500, detail="Error de servidor.")
         
     for item in datos:
         if item["pieza"].lower() == nombre_pieza.lower():
-            return {
-                "encontrado": True, 
-                "resultado": item
-            }
+            return item
             
-    return {
-        "encontrado": False, 
-        "mensaje": f"La pieza '{nombre_pieza}' no existe en el almacén de Nauta Systems."
-    }
+    # REGLA 1: Si no existe, lanzamos 404 real
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"La pieza '{nombre_pieza}' no se encuentra en el registro."
+    )
 
 # ==========================================
-# RUTAS DE ESCRITURA (POST)
+# RUTAS DE ESCRITURA (POST, PUT, DELETE)
 # ==========================================
 
-@app.post("/inventario")
+@app.post("/inventario", status_code=status.HTTP_201_CREATED)
 def agregar_pieza(nueva_pieza: PiezaNueva):
     inventario = cargar_inventario()
     if inventario is None:
-        return {"error": "Base de datos no disponible"}
-        
-    # El cerebro de la API calcula el estado automáticamente
-    if nueva_pieza.stock < 5:
-        estado_calculado = "critico"
-    else:
-        estado_calculado = "optimo"
-        
+        raise HTTPException(status_code=500, detail="Error al abrir la DB.")
+    
+    # NUEVO: Validación de duplicados (Punto 4 de la auditoría)
+    for item in inventario:
+        # Comparamos en minúsculas para que "Ancla" y "ancla" sean lo mismo
+        if item["pieza"].lower() == nueva_pieza.pieza.lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"La pieza '{nueva_pieza.pieza}' ya existe. Usa el método PUT si quieres actualizarla."
+            )
+    
+    # Si pasa la validación, seguimos con la lógica normal
+    estado_calculado = calcular_estado(nueva_pieza.stock)
+    
     pieza_dict = {
         "pieza": nueva_pieza.pieza,
         "stock": nueva_pieza.stock,
@@ -90,76 +92,48 @@ def agregar_pieza(nueva_pieza: PiezaNueva):
     }
     
     inventario.append(pieza_dict)
-    exito = guardar_inventario(inventario)
-    
-    if exito:
-        return {
-            "exito": True, 
-            "mensaje": f"La pieza '{nueva_pieza.pieza}' se registró como '{estado_calculado}'."
-        }
-    else:
-        return {"error": "Hubo un problema al escribir en la base de datos."}
-
-# ==========================================
-# RUTAS DE ELIMINACIÓN (DELETE)
-# ==========================================
-
-@app.delete("/inventario/{nombre_pieza}")
-def eliminar_pieza(nombre_pieza: str):
-    inventario = cargar_inventario()
-    if inventario is None:
-        return {"error": "Base de datos no disponible"}
+    if not guardar_inventario(inventario):
+        raise HTTPException(status_code=500, detail="No se pudo guardar el registro.")
         
-    # Recorremos el inventario usando 'enumerate' para saber en qué posición exacta (índice) estamos
-    for i, item in enumerate(inventario):
-        if item["pieza"].lower() == nombre_pieza.lower():
-            # Si hay coincidencia, sacamos la pieza de la lista usando su índice 'i'
-            pieza_eliminada = inventario.pop(i)
-            
-            # Guardamos la lista actualizada (ahora con un elemento menos)
-            exito = guardar_inventario(inventario)
-            
-            if exito:
-                return {"exito": True, "mensaje": f"La pieza '{pieza_eliminada['pieza']}' fue eliminada permanentemente."}
-            else:
-                return {"error": "Error al intentar guardar los cambios en el archivo."}
-                
-    # Si el bucle termina sin encontrar nada, avisamos que la pieza no existe
-    return {"error": True, "mensaje": f"La pieza '{nombre_pieza}' no se encontró en el inventario."}
-
-# ==========================================
-# RUTAS DE ACTUALIZACIÓN (PUT)
-# ==========================================
+    return {"mensaje": "Registro creado con éxito", "data": pieza_dict}
 
 @app.put("/inventario/{nombre_pieza}")
 def actualizar_pieza(nombre_pieza: str, datos_nuevos: PiezaActualizar):
     inventario = cargar_inventario()
     if inventario is None:
-        return {"error": "Base de datos no disponible"}
+        raise HTTPException(status_code=500, detail="Error de servidor.")
         
     for item in inventario:
         if item["pieza"].lower() == nombre_pieza.lower():
-            # 1. Actualizamos los valores numéricos
             item["stock"] = datos_nuevos.stock
             item["precio"] = datos_nuevos.precio
+            item["estado"] = calcular_estado(item["stock"])
             
-            # 2. El servidor vuelve a usar su inteligencia para recalcular el estado
-            if item["stock"] < 5:
-                item["estado"] = "critico"
-            else:
-                item["estado"] = "optimo"
+            if guardar_inventario(inventario):
+                return {"mensaje": "Actualización exitosa", "data": item}
+            raise HTTPException(status_code=500, detail="Error al guardar cambios.")
                 
-            # 3. Guardamos los cambios
-            exito = guardar_inventario(inventario)
-            
-            if exito:
-                return {
-                    "exito": True, 
-                    "mensaje": f"La pieza '{item['pieza']}' fue actualizada con éxito.",
-                    "datos_actualizados": item
-                }
-            else:
-                return {"error": "Error al intentar guardar los cambios."}
+    # REGLA 1: Si intentas actualizar algo que no existe -> 404
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Imposible actualizar: '{nombre_pieza}' no existe."
+    )
+
+@app.delete("/inventario/{nombre_pieza}")
+def eliminar_pieza(nombre_pieza: str):
+    inventario = cargar_inventario()
+    if inventario is None:
+        raise HTTPException(status_code=500, detail="Error de servidor.")
+        
+    for i, item in enumerate(inventario):
+        if item["pieza"].lower() == nombre_pieza.lower():
+            pieza_removida = inventario.pop(i)
+            if guardar_inventario(inventario):
+                return {"mensaje": f"Pieza '{pieza_removida['pieza']}' eliminada correctamente."}
+            raise HTTPException(status_code=500, detail="Error al procesar eliminación.")
                 
-    # Si termina el ciclo y no la encuentra
-    return {"error": True, "mensaje": f"La pieza '{nombre_pieza}' no existe."}
+    # REGLA 1: Si intentas borrar algo que no existe -> 404
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Error: No se pudo eliminar '{nombre_pieza}' porque no existe."
+    )
