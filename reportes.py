@@ -20,7 +20,7 @@ def calcular_finanzas(datos):
     valor_total = 0.0
     for item in datos:
         valor_total += item["stock"] * item["precio"]
-    print(f"[FINANZAS] El valor total del inventario es: ${valor_total:,.2f}")
+    return valor_total
 
 def exportar_csv(datos):
     fecha_actual = datetime.now().strftime("%Y-%m-%d")

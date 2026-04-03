@@ -1,38 +1,50 @@
 [
-    {
-        "pieza": "Motor Fuera de Borda",
-        "stock": 12,
-        "estado": "optimo",
-        "precio": 4500.50
-    },
-    {
-        "pieza": "Válvula de Presión",
-        "stock": 3,
-        "estado": "critico",
-        "precio": 120.00
-    },
-    {
-        "pieza": "Filtro de Aceite",
-        "stock": 45,
-        "estado": "optimo",
-        "precio": 25.50
-    },
-    {
-        "pieza": "Panel de Control",
-        "stock": 1,
-        "estado": "critico",
-        "precio": 850.00
-    },
-    {
-        "pieza": "Bomba de Achique",
-        "stock": 8,
-        "estado": "optimo",
-        "precio": 310.25
-    },
-    {
-        "pieza": "GPS Marino",
-        "stock": 2,
-        "estado": "critico",
-        "precio": 1200.00
-    }
+  {
+    "pieza": "Motor Fuera de Borda",
+    "stock": 12,
+    "estado": "optimo",
+    "precio": 4500.5
+  },
+  {
+    "pieza": "V\u00e1lvula de Presi\u00f3n",
+    "stock": 3,
+    "estado": "critico",
+    "precio": 120.0
+  },
+  {
+    "pieza": "Filtro de Aceite",
+    "stock": 45,
+    "estado": "optimo",
+    "precio": 25.5
+  },
+  {
+    "pieza": "Panel de Control",
+    "stock": 1,
+    "estado": "critico",
+    "precio": 850.0
+  },
+  {
+    "pieza": "Bomba de Achique",
+    "stock": 8,
+    "estado": "optimo",
+    "precio": 310.25
+  },
+  {
+    "pieza": "GPS Marino",
+    "stock": 2,
+    "estado": "critico",
+    "precio": 1200.0
+  },
+  {
+    "pieza": "Bater\u00eda de Litio",
+    "stock": 10,
+    "estado": "optimo",
+    "precio": 350.0
+  },
+  {
+    "pieza": "Buj\u00eda de Motor",
+    "stock": 2,
+    "estado": "critico",
+    "precio": 15.5
+  }
 ]
