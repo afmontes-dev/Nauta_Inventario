@@ -7,9 +7,9 @@
   },
   {
     "pieza": "V\u00e1lvula de Presi\u00f3n",
-    "stock": 3,
-    "estado": "critico",
-    "precio": 120.0
+    "stock": 20,
+    "estado": "optimo",
+    "precio": 150.0
   },
   {
     "pieza": "Filtro de Aceite",
@@ -34,12 +34,6 @@
     "stock": 2,
     "estado": "critico",
     "precio": 1200.0
-  },
-  {
-    "pieza": "Bater\u00eda de Litio",
-    "stock": 10,
-    "estado": "optimo",
-    "precio": 350.0
   },
   {
     "pieza": "Buj\u00eda de Motor",
