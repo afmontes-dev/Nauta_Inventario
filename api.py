@@ -11,6 +11,10 @@ class PiezaNueva(BaseModel):
     pieza: str
     stock: int
     precio: float
+# Reglas para cuando alguien quiere actualizar (solo le pedimos stock y precio)
+class PiezaActualizar(BaseModel):
+    stock: int
+    precio: float
 
 # ==========================================
 # RUTAS DE LECTURA (GET)
@@ -95,3 +99,67 @@ def agregar_pieza(nueva_pieza: PiezaNueva):
         }
     else:
         return {"error": "Hubo un problema al escribir en la base de datos."}
+
+# ==========================================
+# RUTAS DE ELIMINACIÓN (DELETE)
+# ==========================================
+
+@app.delete("/inventario/{nombre_pieza}")
+def eliminar_pieza(nombre_pieza: str):
+    inventario = cargar_inventario()
+    if inventario is None:
+        return {"error": "Base de datos no disponible"}
+        
+    # Recorremos el inventario usando 'enumerate' para saber en qué posición exacta (índice) estamos
+    for i, item in enumerate(inventario):
+        if item["pieza"].lower() == nombre_pieza.lower():
+            # Si hay coincidencia, sacamos la pieza de la lista usando su índice 'i'
+            pieza_eliminada = inventario.pop(i)
+            
+            # Guardamos la lista actualizada (ahora con un elemento menos)
+            exito = guardar_inventario(inventario)
+            
+            if exito:
+                return {"exito": True, "mensaje": f"La pieza '{pieza_eliminada['pieza']}' fue eliminada permanentemente."}
+            else:
+                return {"error": "Error al intentar guardar los cambios en el archivo."}
+                
+    # Si el bucle termina sin encontrar nada, avisamos que la pieza no existe
+    return {"error": True, "mensaje": f"La pieza '{nombre_pieza}' no se encontró en el inventario."}
+
+# ==========================================
+# RUTAS DE ACTUALIZACIÓN (PUT)
+# ==========================================
+
+@app.put("/inventario/{nombre_pieza}")
+def actualizar_pieza(nombre_pieza: str, datos_nuevos: PiezaActualizar):
+    inventario = cargar_inventario()
+    if inventario is None:
+        return {"error": "Base de datos no disponible"}
+        
+    for item in inventario:
+        if item["pieza"].lower() == nombre_pieza.lower():
+            # 1. Actualizamos los valores numéricos
+            item["stock"] = datos_nuevos.stock
+            item["precio"] = datos_nuevos.precio
+            
+            # 2. El servidor vuelve a usar su inteligencia para recalcular el estado
+            if item["stock"] < 5:
+                item["estado"] = "critico"
+            else:
+                item["estado"] = "optimo"
+                
+            # 3. Guardamos los cambios
+            exito = guardar_inventario(inventario)
+            
+            if exito:
+                return {
+                    "exito": True, 
+                    "mensaje": f"La pieza '{item['pieza']}' fue actualizada con éxito.",
+                    "datos_actualizados": item
+                }
+            else:
+                return {"error": "Error al intentar guardar los cambios."}
+                
+    # Si termina el ciclo y no la encuentra
+    return {"error": True, "mensaje": f"La pieza '{nombre_pieza}' no existe."}
