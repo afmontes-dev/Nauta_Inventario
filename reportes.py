@@ -16,11 +16,16 @@ def generar_alerta_txt(datos):
         archivo.write(f"Total de piezas críticas detectadas: {piezas_criticas}\n")
     print(f"[REPORTES] TXT de alertas generado: {nombre_archivo}")
 
-def calcular_finanzas(datos):
-    valor_total = 0.0
+def calcular_finanzas(datos: list) -> float:
+    """
+    Calcula el valor total del inventario multiplicando stock por precio de cada item.
+    Retorna un número decimal (float).
+    """
+    total = 0.0
     for item in datos:
-        valor_total += item["stock"] * item["precio"]
-    return valor_total
+        # Aseguramos que el cálculo se haga con números
+        total += float(item["stock"]) * float(item["precio"])
+    return total
 
 def exportar_csv(datos):
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
@@ -41,3 +46,13 @@ def exportar_csv(datos):
                 "subtotal_usd": subtotal
             })
     print(f"[REPORTES] CSV financiero exportado: {nombre_csv}")
+
+def calcular_estado(stock: int) -> str:
+    """
+    Aplica la regla de negocio para determinar el estado de una pieza.
+    Regla: Menos de 5 unidades es estado 'critico'.
+    """
+    if stock < 5:
+        return "critico"
+    else:
+        return "optimo"
