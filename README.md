@@ -1,53 +1,47 @@
-# Analizador de Inventario - Nauta Systems
-Script de automatización base para la lectura y gestión de componentes del sector naval.
+# Nauta Systems - Sistema de Inventario Naval ⚓
 
-## 🚀 Características
-- **Lectura de Datos**: Extrae información desde `base_datos.json`.
-- **Reportes Automáticos**: Genera archivos `.txt` con alertas de stock bajo.
-- **Análisis Financiero**: Calcula el valor total del inventario y exporta a `.csv`.
-- **Configuración Flexible**: Usa variables de entorno para configurar el modo de operación.
+Un sistema backend robusto construido en Python para la gestión, control financiero y automatización de inventarios de piezas navales.
 
-## 🛠️ Instalación
-1. Clona el repositorio:
+## 🚀 Tecnologías Utilizadas
+* **Python 3**
+* **FastAPI:** Framework web moderno y de alto rendimiento para construir APIs con Python.
+* **Uvicorn:** Servidor ASGI ultrarrápido.
+* **Pydantic:** Validación de datos y gestión de configuraciones.
+* **Base de Datos Local:** Gestión de persistencia mediante archivos JSON.
+
+## 🏗️ Arquitectura del Proyecto
+El proyecto está construido bajo un patrón de diseño modular para garantizar su escalabilidad:
+* `api.py`: Controlador principal (Cerebro de la API) y definición de rutas.
+* `datos.py`: Módulo de persistencia (Operaciones de lectura y escritura en JSON).
+* `reportes.py`: Módulo de lógica de negocios y cálculos financieros.
+* `base_datos.json`: Almacenamiento persistente del inventario.
+
+## 🔌 API Endpoints (CRUD)
+El sistema cuenta con una API RESTful documentada automáticamente mediante Swagger UI (OpenAPI):
+
+| Verbo HTTP | Endpoint | Descripción |
+| :--- | :--- | :--- |
+| **GET** | `/` | Ruta principal para verificar el estado del servidor. |
+| **GET** | `/inventario` | Retorna el inventario completo. |
+| **GET** | `/inventario/{nombre_pieza}` | Buscador de piezas específicas (insensible a mayúsculas/minúsculas). |
+| **GET** | `/finanzas` | Retorna el cálculo total del valor del inventario en USD. |
+| **POST** | `/inventario` | Registra una nueva pieza. (El sistema calcula el estado automáticamente). |
+| **PUT** | `/inventario/{nombre_pieza}` | Actualiza el stock y precio de una pieza existente, recalculando su estado. |
+| **DELETE** | `/inventario/{nombre_pieza}`| Elimina permanentemente una pieza del sistema. |
+
+## 🛠️ Instalación y Ejecución Local
+
+1. Clonar el repositorio.
+2. Activar el entorno virtual:
    ```bash
-   git clone https://github.com/afmontes-dev/Nauta_Inventario.git
-   cd Nauta_Inventario
+   .\venv\Scripts\activate
    ```
-
-2. Crea y activa un entorno virtual:
-   ```bash
-   python -m venv venv
-   # Windows
-   venv\Scripts\activate
-   # macOS/Linux
-   source venv/bin/activate
-   ```
-
-3. Instala las dependencias:
+3. Instalar dependencias:
    ```bash
    pip install -r requirements.txt
    ```
-
-## ⚙️ Configuración
-Crea un archivo `.env` en la raíz del proyecto para configurar el entorno:
-
-```env
-MODO_ENTORNO=desarrollo
-```
-
-## 🏃 Ejecución
-Ejecuta el script principal:
-
-```bash
-python main.py
-```
-
-## 📂 Estructura del Proyecto
-- `main.py`: Orquestador principal del sistema.
-- `datos.py`: Módulo para la lectura de la base de datos.
-- `reportes.py`: Módulo para la generación de reportes y análisis financieros.
-- `base_datos.json`: Archivo de datos principal.
-- `.env`: Variables de entorno.
-
-## 📝 Licencia
-Este proyecto es de código cerrado y propiedad de Nauta Systems.
+4. Ejecutar el servidor:
+   ```bash
+   uvicorn api:app --reload
+   ```
+5. Acceder a la documentación interactiva en: `http://localhost:8000/docs` 
