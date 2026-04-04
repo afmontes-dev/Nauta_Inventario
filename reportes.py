@@ -19,7 +19,6 @@ def exportar_csv(datos: list) -> None:
     """
     Exporta el inventario completo a un formato CSV compatible con Excel.
     """
-    import csv
     try:
         with open("inventario_nauta.csv", "w", newline="", encoding="utf-8") as f:
             escritor = csv.DictWriter(f, fieldnames=["pieza", "stock", "estado", "precio"])
