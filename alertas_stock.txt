@@ -1,4 +1,0 @@
---- ALERTA DE REPOSICIÓN NAUTA SYSTEMS ---
-REVISAR: Panel de Control | Stock actual: 1
-REVISAR: GPS Marino | Stock actual: 2
-REVISAR: Bujía de Motor | Stock actual: 2
