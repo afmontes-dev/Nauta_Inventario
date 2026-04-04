@@ -1,5 +1,5 @@
 pieza,stock,estado,precio
-Motor Fuera de Borda,12,optimo,4500.5
+Motor Fuera de Borda,8,optimo,250.0
 Válvula de Presión,20,optimo,150.0
 Filtro de Aceite,15,optimo,150.0
 Panel de Control,1,critico,850.0

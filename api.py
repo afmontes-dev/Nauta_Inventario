@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException, status, Depends
 from pydantic import BaseModel
-from datos import cargar_inventario, guardar_inventario
 from reportes import calcular_finanzas, calcular_estado
 from sqlalchemy.orm import Session
 from database import get_db
