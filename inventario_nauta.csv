@@ -1,0 +1,9 @@
+pieza,stock,estado,precio
+Motor Fuera de Borda,12,optimo,4500.5
+Válvula de Presión,20,optimo,150.0
+Filtro de Aceite,15,optimo,150.0
+Panel de Control,1,critico,850.0
+Bomba de Achique,8,optimo,310.25
+GPS Marino,2,critico,1200.0
+Bujía de Motor,2,critico,15.5
+Cabo de Amarre,10,optimo,20.0

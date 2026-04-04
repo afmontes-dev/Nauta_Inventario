@@ -20,7 +20,9 @@ def iniciar_sistema():
     # Si la base de datos existe, el jefe delega el trabajo a los reportes
     if inventario:
         generar_alerta_txt(inventario)
-        calcular_finanzas(inventario)
+        print("\n--- RESUMEN FINANCIERO ---")
+        valor_total = calcular_finanzas(inventario)
+        print(f"[LOGISTICA] Valor total del inventario: ${valor_total:,.2f} USD")
         exportar_csv(inventario)
         print("\n[SISTEMA] Todas las operaciones finalizaron con éxito.")
 

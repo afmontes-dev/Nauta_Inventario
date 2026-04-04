@@ -42,12 +42,6 @@
     "precio": 15.5
   },
   {
-    "pieza": "Filtro de Aceite",
-    "stock": 3,
-    "estado": "critico",
-    "precio": 45.0
-  },
-  {
     "pieza": "Cabo de Amarre",
     "stock": 10,
     "estado": "optimo",
