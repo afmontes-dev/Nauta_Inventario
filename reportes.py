@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime
 
-def generar_alerta_txt(datos: list) -> None:
+def generar_alerta_txt(datos: list[dict]) -> None:
     """
     Filtra piezas en estado crítico y genera un reporte de texto para compras.
     """
@@ -15,11 +15,10 @@ def generar_alerta_txt(datos: list) -> None:
             f.write(f"REVISAR: {p['pieza']} | Stock actual: {p['stock']}\n")
     print("[SISTEMA] Reporte de alertas generado en 'alertas_stock.txt'")
 
-def exportar_csv(datos: list) -> None:
+def exportar_csv(datos: list[dict]) -> None:
     """
     Exporta el inventario completo a un formato CSV compatible con Excel.
     """
-    import csv
     try:
         with open("inventario_nauta.csv", "w", newline="", encoding="utf-8") as f:
             escritor = csv.DictWriter(f, fieldnames=["pieza", "stock", "estado", "precio"])
@@ -29,23 +28,18 @@ def exportar_csv(datos: list) -> None:
     except Exception as e:
         print(f"[ERROR] No se pudo exportar a CSV: {e}")
 
-def calcular_finanzas(datos: list) -> float:
+def calcular_finanzas(datos: list[dict]) -> float:
     """
     Calcula el valor total del inventario multiplicando stock por precio de cada item.
     Retorna un número decimal (float).
     """
     total = 0.0
     for item in datos:
-        # Aseguramos que el cálculo se haga con números
         total += float(item["stock"]) * float(item["precio"])
     return total
 
 def calcular_estado(stock: int) -> str:
     """
     Aplica la regla de negocio para determinar el estado de una pieza.
-    Regla: Menos de 5 unidades es estado 'critico'.
     """
-    if stock < 5:
-        return "critico"
-    else:
-        return "optimo"
+    return "critico" if stock < 5 else "optimo"

@@ -13,3 +13,10 @@ reporte_*.txt
 
 # Reportes financieros
 finanzas_*.csv
+
+# Reportes generados por el sistema
+alertas_stock.txt
+inventario_nauta.csv
+
+# Base de datos .db
+nauta_system.db

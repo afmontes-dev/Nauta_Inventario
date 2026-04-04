@@ -1,30 +1,48 @@
-import os
-from dotenv import load_dotenv
+# main.py
+import reportes
+from database import SessionLocal
+import models
 
-# Importamos nuestras propias herramientas desde los otros archivos
-from datos import cargar_inventario
-from reportes import generar_alerta_txt, calcular_finanzas, exportar_csv
+def ejecutar_reporte_cli():
+    # 1. Abrir conexión con el "archivo de acero" (.db)
+    db = SessionLocal()
+    
+    try:
+        # 2. Consultar todas las piezas
+        piezas_db = db.query(models.PiezaDB).all()
+        
+        if not piezas_db:
+            print("[SISTEMA] No hay datos en la base de datos para procesar.")
+            return
 
-def iniciar_sistema():
-    load_dotenv()
-    entorno = os.getenv("MODO_ENTORNO", "desconocido")
-    
-    print("==================================================")
-    print("   SISTEMA DE INVENTARIO NAVAL - NAUTA SYSTEMS")
-    print("==================================================")
-    print(f"[{entorno.upper()}] Iniciando módulos de automatización...\n")
-    
-    # 1. El jefe pide los datos
-    inventario = cargar_inventario()
-    
-    # Si la base de datos existe, el jefe delega el trabajo a los reportes
-    if inventario:
-        generar_alerta_txt(inventario)
-        print("\n--- RESUMEN FINANCIERO ---")
-        valor_total = calcular_finanzas(inventario)
-        print(f"[LOGISTICA] Valor total del inventario: ${valor_total:,.2f} USD")
-        exportar_csv(inventario)
-        print("\n[SISTEMA] Todas las operaciones finalizaron con éxito.")
+        # 3. Convertir objetos de DB a una lista de diccionarios 
+        # (Esto es necesario para que tus funciones de 'reportes.py' sigan funcionando)
+        inventario = [
+            {
+                "pieza": p.pieza, 
+                "stock": p.stock, 
+                "precio": p.precio, 
+                "estado": p.estado
+            } for p in piezas_db
+        ]
+
+        # 4. Usar tu lógica de reportes (¡Aquí no cambia nada, gracias a DRY!)
+        print("\n" + "="*30)
+        print("   REPORTE NAUTA SYSTEMS")
+        print("="*30)
+        
+        valor_total = reportes.calcular_finanzas(inventario)
+        print(f"[FINANZAS] Valor total en bodega: ${valor_total:,.2f} USD")
+        
+        # Generar archivos físicos
+        reportes.generar_alerta_txt(inventario)
+        reportes.exportar_csv(inventario)
+        
+    except Exception as e:
+        print(f"[ERROR] Ocurrió un fallo al leer la base de datos: {e}")
+    finally:
+        # 5. SIEMPRE cerrar la sesión
+        db.close()
 
 if __name__ == "__main__":
-    iniciar_sistema()
+    ejecutar_reporte_cli()
