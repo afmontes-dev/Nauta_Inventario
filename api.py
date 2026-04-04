@@ -1,7 +1,15 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from pydantic import BaseModel
 from datos import cargar_inventario, guardar_inventario
 from reportes import calcular_finanzas, calcular_estado
+from sqlalchemy.orm import Session
+from database import get_db
+
+import models
+from database import engine
+
+# Esto crea las tablas en el archivo .db automáticamente
+models.Base.metadata.create_all(bind=engine)
 
 # 1. Instanciamos la aplicación con metadatos profesionales
 app = FastAPI(title="Nauta Systems API v1.1")
@@ -25,14 +33,10 @@ def ruta_principal():
     return {"sistema": "Nauta Systems", "estado": "Operativo"}
 
 @app.get("/inventario")
-def obtener_inventario():
-    datos = cargar_inventario()
-    if datos is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error crítico: No se pudo cargar el archivo de inventario."
-        )
-    return {"total": len(datos), "items": datos}
+def obtener_inventario(db: Session = Depends(get_db)): # <-- Inyectamos la sesión
+    # En SQL no cargamos un JSON, hacemos una consulta (Query)
+    piezas = db.query(models.PiezaDB).all()
+    return {"total": len(piezas), "items": piezas}
 
 @app.get("/finanzas")
 def obtener_finanzas():
@@ -67,35 +71,30 @@ def buscar_pieza(nombre_pieza: str):
 # ==========================================
 
 @app.post("/inventario", status_code=status.HTTP_201_CREATED)
-def agregar_pieza(nueva_pieza: PiezaNueva):
-    inventario = cargar_inventario()
-    if inventario is None:
-        raise HTTPException(status_code=500, detail="Error al abrir la DB.")
+def agregar_pieza(nueva_pieza: PiezaNueva, db: Session = Depends(get_db)):
+    # 1. Validación de duplicados (Ahora con una consulta SQL rápida)
+    existe = db.query(models.PiezaDB).filter(models.PiezaDB.pieza == nueva_pieza.pieza).first()
+    if existe:
+        raise HTTPException(status_code=409, detail=f"La pieza '{nueva_pieza.pieza}' ya existe.")
     
-    # NUEVO: Validación de duplicados (Punto 4 de la auditoría)
-    for item in inventario:
-        # Comparamos en minúsculas para que "Ancla" y "ancla" sean lo mismo
-        if item["pieza"].lower() == nueva_pieza.pieza.lower():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"La pieza '{nueva_pieza.pieza}' ya existe. Usa el método PUT si quieres actualizarla."
-            )
-    
-    # Si pasa la validación, seguimos con la lógica normal
+    # 2. Calcular estado (seguimos usando nuestro 'cerebro' en reportes.py)
+    from reportes import calcular_estado
     estado_calculado = calcular_estado(nueva_pieza.stock)
     
-    pieza_dict = {
-        "pieza": nueva_pieza.pieza,
-        "stock": nueva_pieza.stock,
-        "estado": estado_calculado,
-        "precio": nueva_pieza.precio
-    }
+    # 3. Crear el objeto de base de datos
+    nueva_pieza_db = models.PiezaDB(
+        pieza=nueva_pieza.pieza,
+        stock=nueva_pieza.stock,
+        precio=nueva_pieza.precio,
+        estado=estado_calculado
+    )
     
-    inventario.append(pieza_dict)
-    if not guardar_inventario(inventario):
-        raise HTTPException(status_code=500, detail="No se pudo guardar el registro.")
-        
-    return {"mensaje": "Registro creado con éxito", "data": pieza_dict}
+    # 4. Guardar en la DB
+    db.add(nueva_pieza_db)
+    db.commit()
+    db.refresh(nueva_pieza_db) # Para obtener el ID generado automáticamente
+    
+    return {"mensaje": "Registro creado en DB", "data": nueva_pieza_db}
 
 @app.put("/inventario/{nombre_pieza}")
 def actualizar_pieza(nombre_pieza: str, datos_nuevos: PiezaActualizar):
