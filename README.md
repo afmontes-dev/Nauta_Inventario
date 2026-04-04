@@ -1,4 +1,3 @@
-Set-Content README.md @"
 # 🚀 Nauta Systems - v1.2 (Security & SQL Update)
 
 Sistema profesional de gestión de inventario para repuestos navales, desarrollado con **FastAPI**. Esta versión migra la persistencia de datos a una estructura relacional y añade capas de seguridad de grado industrial.
