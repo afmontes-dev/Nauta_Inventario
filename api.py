@@ -1,137 +1,182 @@
 from fastapi import FastAPI, HTTPException, status, Depends
-from pydantic import BaseModel
-from reportes import calcular_finanzas, calcular_estado
 from sqlalchemy.orm import Session
-from database import get_db
+from typing import List
 
+# Importaciones de nuestros módulos locales
 import models
-from database import engine
+import schemas
+import auth
+from database import engine, get_db
+from reportes import calcular_estado, calcular_finanzas
 
-# Esto crea las tablas en el archivo .db automáticamente
+# Creamos las tablas en la base de datos si no existen
 models.Base.metadata.create_all(bind=engine)
 
-# 1. Instanciamos la aplicación con metadatos profesionales
-app = FastAPI(title="Nauta Systems API v1.1")
+app = FastAPI(
+    title="Nauta Systems API",
+    description="Sistema de gestión de inventario para repuestos navales",
+    version="1.2"
+)
 
-# 2. Esquemas de validación (Pydantic)
-class PiezaNueva(BaseModel):
-    pieza: str
-    stock: int
-    precio: float
+from fastapi.security import OAuth2PasswordBearer # Asegúrate de tener este import
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-class PiezaActualizar(BaseModel):
-    stock: int
-    precio: float
+def obtener_usuario_actual(token: str = Depends(oauth2_scheme)):
+    # Esta función simplemente verifica que el token exista. 
+    # Por ahora, si hay token, dejamos pasar.
+    if not token:
+        raise HTTPException(status_code=401, detail="No autorizado")
+    return token
 
-# ==========================================
-# RUTAS DE LECTURA (GET)
-# ==========================================
+# --- RUTAS DE INVENTARIO ---
 
-@app.get("/")
+@app.get("/", tags=["General"])
 def ruta_principal():
-    return {"sistema": "Nauta Systems", "estado": "Operativo"}
+    return {"mensaje": "Bienvenido a la consola de mando de Nauta Systems"}
 
-@app.get("/inventario")
-def obtener_inventario(db: Session = Depends(get_db)): # <-- Inyectamos la sesión
-    # En SQL no cargamos un JSON, hacemos una consulta (Query)
+@app.get("/inventario", tags=["Inventario"])
+def obtener_inventario(db: Session = Depends(get_db)):
+    # 1. Traer los objetos de la base de datos
     piezas = db.query(models.PiezaDB).all()
+    
+    # 2. Si no hay nada, devolvemos una lista vacía para que no explote
+    if not piezas:
+        return {"total": 0, "items": []}
+        
     return {"total": len(piezas), "items": piezas}
 
-@app.get("/finanzas")
-def obtener_finanzas():
-    datos = cargar_inventario()
-    if datos is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error al acceder a los datos financieros."
-        )
-    
-    valor_total = calcular_finanzas(datos)
-    return {"estado": "Calculado", "valor_total_usd": valor_total}
-
-@app.get("/inventario/{nombre_pieza}")
-def buscar_pieza(nombre_pieza: str):
-    datos = cargar_inventario()
-    if datos is None:
-        raise HTTPException(status_code=500, detail="Error de servidor.")
-        
-    for item in datos:
-        if item["pieza"].lower() == nombre_pieza.lower():
-            return item
-            
-    # REGLA 1: Si no existe, lanzamos 404 real
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"La pieza '{nombre_pieza}' no se encuentra en el registro."
-    )
-
-# ==========================================
-# RUTAS DE ESCRITURA (POST, PUT, DELETE)
-# ==========================================
-
-@app.post("/inventario", status_code=status.HTTP_201_CREATED)
-def agregar_pieza(nueva_pieza: PiezaNueva, db: Session = Depends(get_db)):
-    # 1. Validación de duplicados (Ahora con una consulta SQL rápida)
+@app.post("/inventario", status_code=status.HTTP_201_CREATED, tags=["Inventario"])
+def agregar_pieza(
+    nueva_pieza: schemas.PiezaNueva, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme) # <--- EL CANDADO FINAL
+):
+    # 1. Validación de duplicados (Nadie puede duplicar piezas, ni el capitán)
     existe = db.query(models.PiezaDB).filter(models.PiezaDB.pieza == nueva_pieza.pieza).first()
     if existe:
         raise HTTPException(status_code=409, detail=f"La pieza '{nueva_pieza.pieza}' ya existe.")
     
-    # 2. Calcular estado (seguimos usando nuestro 'cerebro' en reportes.py)
-    from reportes import calcular_estado
+    # 2. Lógica de negocio (Estado calculado automáticamente)
     estado_calculado = calcular_estado(nueva_pieza.stock)
     
-    # 3. Crear el objeto de base de datos
-    nueva_pieza_db = models.PiezaDB(
+    # 3. Guardar en SQL (Persistencia de acero)
+    pieza_db = models.PiezaDB(
         pieza=nueva_pieza.pieza,
         stock=nueva_pieza.stock,
         precio=nueva_pieza.precio,
         estado=estado_calculado
     )
     
-    # 4. Guardar en la DB
-    db.add(nueva_pieza_db)
+    db.add(pieza_db)
     db.commit()
-    db.refresh(nueva_pieza_db) # Para obtener el ID generado automáticamente
+    db.refresh(pieza_db)
     
-    return {"mensaje": "Registro creado en DB", "data": nueva_pieza_db}
+    return {"mensaje": "Pieza registrada con éxito", "data": pieza_db}
 
-@app.put("/inventario/{nombre_pieza}")
-def actualizar_pieza(nombre_pieza: str, datos_nuevos: PiezaActualizar):
-    inventario = cargar_inventario()
-    if inventario is None:
-        raise HTTPException(status_code=500, detail="Error de servidor.")
-        
-    for item in inventario:
-        if item["pieza"].lower() == nombre_pieza.lower():
-            item["stock"] = datos_nuevos.stock
-            item["precio"] = datos_nuevos.precio
-            item["estado"] = calcular_estado(item["stock"])
-            
-            if guardar_inventario(inventario):
-                return {"mensaje": "Actualización exitosa", "data": item}
-            raise HTTPException(status_code=500, detail="Error al guardar cambios.")
-                
-    # REGLA 1: Si intentas actualizar algo que no existe -> 404
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Imposible actualizar: '{nombre_pieza}' no existe."
-    )
+@app.get("/finanzas", tags=["Reportes"])
+def obtener_finanzas(db: Session = Depends(get_db)):
+    piezas = db.query(models.PiezaDB).all()
+    # Convertimos objetos de DB a diccionarios para la función de finanzas
+    datos_lista = [{"precio": p.precio, "stock": p.stock} for p in piezas]
+    total = calcular_finanzas(datos_lista)
+    return {"valor_total_inventario": total, "moneda": "USD"}
 
-@app.delete("/inventario/{nombre_pieza}")
-def eliminar_pieza(nombre_pieza: str):
-    inventario = cargar_inventario()
-    if inventario is None:
-        raise HTTPException(status_code=500, detail="Error de servidor.")
-        
-    for i, item in enumerate(inventario):
-        if item["pieza"].lower() == nombre_pieza.lower():
-            pieza_removida = inventario.pop(i)
-            if guardar_inventario(inventario):
-                return {"mensaje": f"Pieza '{pieza_removida['pieza']}' eliminada correctamente."}
-            raise HTTPException(status_code=500, detail="Error al procesar eliminación.")
-                
-    # REGLA 1: Si intentas borrar algo que no existe -> 404
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"Error: No se pudo eliminar '{nombre_pieza}' porque no existe."
+# --- RUTAS DE SEGURIDAD (BLOQUE 2) ---
+
+@app.post("/usuarios/registrar", response_model=schemas.UsuarioRespuesta, tags=["Seguridad"]) # <-- Cambiado aquí
+def registrar_usuario(usuario: schemas.UsuarioCreate, db: Session = Depends(get_db)):
+    # 1. Verificar si el usuario ya existe
+    existe = db.query(models.UsuarioDB).filter(models.UsuarioDB.username == usuario.username).first()
+    if existe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="El nombre de usuario ya está registrado"
+        )
+    
+    # 2. Encriptar contraseña
+    hashed_pwd = auth.obtener_password_hash(usuario.password)
+    
+    # 3. Crear registro
+    nuevo_usuario = models.UsuarioDB(
+        username=usuario.username,
+        password_hash=hashed_pwd
     )
+    
+    db.add(nuevo_usuario)
+    db.commit()
+    db.refresh(nuevo_usuario)
+    
+    return nuevo_usuario # Ahora FastAPI solo sacará el ID y el Username
+
+@app.put("/inventario/{nombre_pieza}", tags=["Inventario"])
+def actualizar_pieza(
+    nombre_pieza: str, 
+    datos: schemas.PiezaActualizar, 
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme) # <--- EL CANDADO MÁGICO
+):
+    # 1. Buscar la pieza en la base de datos
+    pieza_db = db.query(models.PiezaDB).filter(models.PiezaDB.pieza == nombre_pieza).first()
+    
+    if not pieza_db:
+        raise HTTPException(status_code=404, detail="Pieza no encontrada")
+    
+    # 2. Actualizar solo los campos enviados (si el token es válido)
+    if datos.stock is not None:
+        pieza_db.stock = datos.stock
+        # Importante: Usamos tu lógica de reportes para recalcular el estado
+        pieza_db.estado = calcular_estado(datos.stock) 
+        
+    if datos.precio is not None:
+        pieza_db.precio = datos.precio
+        
+    # 3. Guardar cambios en el "archivo de acero" (.db)
+    db.commit()
+    db.refresh(pieza_db)
+    
+    return {"mensaje": "Pieza actualizada con éxito", "data": pieza_db}
+
+# Importante: Asegúrate de tener 'oauth2_scheme' definido antes de las rutas
+from fastapi.security import OAuth2PasswordBearer
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+@app.delete("/inventario/{nombre_pieza}", tags=["Inventario"])
+def eliminar_pieza(
+    nombre_pieza: str, 
+    db: Session = Depends(get_db), 
+    token: str = Depends(oauth2_scheme) # <--- ¡ESTE ES EL CANDADO!
+):
+    # 1. El sistema verificará el token ANTES de entrar aquí
+    pieza_db = db.query(models.PiezaDB).filter(models.PiezaDB.pieza == nombre_pieza).first()
+    
+    if not pieza_db:
+        raise HTTPException(status_code=404, detail="Pieza no encontrada")
+    
+    # 2. Si llegamos aquí, es porque el usuario está autenticado y la pieza existe
+    db.delete(pieza_db)
+    db.commit()
+    
+    return {"mensaje": f"Pieza '{nombre_pieza}' eliminada con éxito"}
+
+from fastapi.security import OAuth2PasswordRequestForm # <-- AÑADE ESTE IMPORT ARRIBA
+
+@app.post("/token", tags=["Seguridad"])
+def login_para_obtener_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db)
+):
+    # 1. Buscar al usuario
+    usuario = db.query(models.UsuarioDB).filter(models.UsuarioDB.username == form_data.username).first()
+    
+    # 2. Validar usuario y contraseña (usando auth.py)
+    if not usuario or not auth.verificar_password(form_data.password, usuario.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 3. Generar el Token (Llave Digital)
+    token_acceso = auth.crear_token_acceso(data={"sub": usuario.username})
+    
+    return {"access_token": token_acceso, "token_type": "bearer"}
