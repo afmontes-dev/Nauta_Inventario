@@ -69,4 +69,3 @@ El sistema protege la integridad de los datos mediante un flujo de autenticació
 
 ## 📝 Notas del Desarrollador
 Esta versión v1.2 marca la transición de Nauta Systems hacia una aplicación escalable. Se ha priorizado la seguridad del lado del servidor (Backend) y la integridad referencial de los datos, preparando el ecosistema para la implementación de una interfaz de usuario (Frontend).
-"@; git checkout -b docs/readme-v1.2; git add README.md; git commit -m "docs: actualizar readme a v1.2"; git checkout main; git merge docs/readme-v1.2; git push origin main; git branch -d docs/readme-v1.2
