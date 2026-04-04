@@ -1,20 +1,33 @@
 import csv
 from datetime import datetime
 
-def generar_alerta_txt(datos):
-    fecha_actual = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    nombre_archivo = f"reporte_nauta_{fecha_actual}.txt"
+def generar_alerta_txt(datos: list) -> None:
+    """
+    Filtra piezas en estado crítico y genera un reporte de texto para compras.
+    """
+    criticos = [item for item in datos if item["estado"] == "critico"]
     
-    with open(nombre_archivo, "w", encoding="utf-8") as archivo:
-        archivo.write("--- REPORTE DE STOCK CRÍTICO ---\n")
-        piezas_criticas = 0
-        for item in datos:
-            if item["stock"] < 5:
-                archivo.write(f"[ALERTA] {item['pieza']} - Quedan {item['stock']} unidades.\n")
-                piezas_criticas += 1
-        archivo.write("--------------------------------\n")
-        archivo.write(f"Total de piezas críticas detectadas: {piezas_criticas}\n")
-    print(f"[REPORTES] TXT de alertas generado: {nombre_archivo}")
+    with open("alertas_stock.txt", "w", encoding="utf-8") as f:
+        f.write("--- ALERTA DE REPOSICIÓN NAUTA SYSTEMS ---\n")
+        if not criticos:
+            f.write("Todo el stock se encuentra en niveles óptimos.\n")
+        for p in criticos:
+            f.write(f"REVISAR: {p['pieza']} | Stock actual: {p['stock']}\n")
+    print("[SISTEMA] Reporte de alertas generado en 'alertas_stock.txt'")
+
+def exportar_csv(datos: list) -> None:
+    """
+    Exporta el inventario completo a un formato CSV compatible con Excel.
+    """
+    import csv
+    try:
+        with open("inventario_nauta.csv", "w", newline="", encoding="utf-8") as f:
+            escritor = csv.DictWriter(f, fieldnames=["pieza", "stock", "estado", "precio"])
+            escritor.writeheader()
+            escritor.writerows(datos)
+        print("[SISTEMA] Inventario exportado exitosamente a 'inventario_nauta.csv'")
+    except Exception as e:
+        print(f"[ERROR] No se pudo exportar a CSV: {e}")
 
 def calcular_finanzas(datos: list) -> float:
     """
@@ -26,26 +39,6 @@ def calcular_finanzas(datos: list) -> float:
         # Aseguramos que el cálculo se haga con números
         total += float(item["stock"]) * float(item["precio"])
     return total
-
-def exportar_csv(datos):
-    fecha_actual = datetime.now().strftime("%Y-%m-%d")
-    nombre_csv = f"finanzas_nauta_{fecha_actual}.csv"
-    
-    with open(nombre_csv, mode="w", newline="", encoding="utf-8") as archivo_csv:
-        columnas = ["pieza", "stock", "estado", "precio", "subtotal_usd"]
-        escritor = csv.DictWriter(archivo_csv, fieldnames=columnas)
-        escritor.writeheader()
-        
-        for item in datos:
-            subtotal = item["stock"] * item["precio"]
-            escritor.writerow({
-                "pieza": item["pieza"],
-                "stock": item["stock"],
-                "estado": item["estado"],
-                "precio": item["precio"],
-                "subtotal_usd": subtotal
-            })
-    print(f"[REPORTES] CSV financiero exportado: {nombre_csv}")
 
 def calcular_estado(stock: int) -> str:
     """
